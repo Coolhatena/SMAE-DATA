@@ -60,3 +60,7 @@ export default function Index() {
     </View>
   );
 }
+
+export const options = {
+	title: "SMAE",
+  };
