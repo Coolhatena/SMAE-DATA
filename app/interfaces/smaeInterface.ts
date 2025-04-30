@@ -1,4 +1,4 @@
-export interface SmaeInterface {
+ interface SmaeInterface {
 	id:                   string;
 	categoria:            string;
 	alimento:             string;
@@ -29,3 +29,5 @@ export interface SmaeInterface {
 	IG:                   string;
 	IC:                   string;
 }
+
+export default SmaeInterface;
