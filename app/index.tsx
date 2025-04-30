@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button, FlatList, Text, View } from "react-native";
 import { supabase } from "./helper/supabase";
-import { SmaeInterface } from "./interfaces/smaeInterface";
+import SmaeInterface from "./interfaces/smaeInterface";
 
 export default function Index() {
   const [alimentos, setAlimentos] = useState<SmaeInterface[]>([]);
