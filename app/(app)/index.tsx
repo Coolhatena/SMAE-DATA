@@ -25,12 +25,21 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showingFavorites, setShowingFavorites] = useState(false);
+  const [favorites, setFavorites] = useState<SmaeInterface[]>([]);
   
   useEffect(() => {
     loadAlimentos();
-  }, []);
+    if (user) {
+      loadFavorites();
+    }
+  }, [user]);
 
   useEffect(() => {
+    if (searchQuery.trim() !== "" && showingFavorites) {
+      setShowingFavorites(false);
+    }
+    
     if (searchQuery.trim() === "") {
       if (searching) {
         loadAlimentos();
@@ -63,6 +72,44 @@ export default function HomeScreen() {
     }
   };
 
+  const loadFavorites = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: favoritesData, error: favoritesError } = await supabase
+        .from('favorites')
+        .select('aliment_id')
+        .eq('user_id', user.id);
+        
+      if (favoritesError) {
+        console.error('Error loading favorites:', favoritesError);
+        return;
+      }
+      
+      if (!favoritesData || favoritesData.length === 0) {
+        setFavorites([]);
+        return;
+      }
+      
+      const favoriteIds = favoritesData.map(fav => fav.aliment_id);
+      
+      const { data: alimentsData, error: alimentsError } = await supabase
+        .from('smae')
+        .select('*')
+        .in('id', favoriteIds);
+        
+      if (alimentsError) {
+        console.error('Error loading favorite foods:', alimentsError);
+        return;
+      }
+      
+      setFavorites(alimentsData || []);
+      
+    } catch (error) {
+      console.error('Unexpected error loading favorites:', error);
+    }
+  };
+
   const searchAlimentos = async (query: string) => {
     setLoading(true);
     setSearching(true);
@@ -87,6 +134,11 @@ export default function HomeScreen() {
   };
 
   const handleRefresh = () => {
+    if (showingFavorites) {
+      loadFavorites();
+      return;
+    }
+    
     if (searchQuery.trim() !== "") {
       searchAlimentos(searchQuery);
     } else {
@@ -100,6 +152,13 @@ export default function HomeScreen() {
 
   const handleSignOut = () => {
     signOut();
+  };
+  
+  const toggleFavorites = () => {
+    setShowingFavorites(!showingFavorites);
+    if (!showingFavorites && favorites.length === 0) {
+      loadFavorites();
+    }
   };
   
   const renderItem = ({ item, index }: { item: SmaeInterface, index: number }) => (
@@ -116,8 +175,12 @@ export default function HomeScreen() {
         </View>
         <View style={styles.itemDetails}>
           {item.cantidad && (
-			// If value is less than 1, show only 2 decimals to prevent ugly periodic number to be displayed (Like 0.33333...)
-            <Text style={styles.itemQuantity}>{parseFloat(item.cantidad) >= 1 ? parseFloat(item.cantidad) : parseFloat(item.cantidad).toFixed(2)} {item.unidad}</Text>
+            <Text style={styles.itemQuantity}>
+				{/* Prevent ugly periodic decimals from showing (Like 0.333333...) */}
+              {parseFloat(item.cantidad) >= 1 
+                ? parseFloat(item.cantidad) 
+                : parseFloat(item.cantidad).toFixed(2)} {item.unidad}
+            </Text>
           )}
           <TouchableOpacity 
             style={styles.infoButton}
@@ -130,7 +193,7 @@ export default function HomeScreen() {
     </TouchableOpacity>
   );
 
-  if (loading && !alimentos.length) {
+  if (loading && !alimentos.length && !favorites.length) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3498db" />
@@ -139,30 +202,32 @@ export default function HomeScreen() {
     );
   }
   
+  const displayData = showingFavorites ? favorites : alimentos;
+  
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.topNav}>
-		  	<View style={styles.searchBarContainer}>
-				<MaterialCommunityIcons name="magnify" size={20} color="#333" style={{ marginRight: 8 }} />
-				<TextInput
-					style={styles.searchInput}
-					placeholder="Buscar alimento..."
-					value={searchQuery}
-					onChangeText={setSearchQuery}
-					clearButtonMode="while-editing"
-					returnKeyType="search"
-					onSubmitEditing={Keyboard.dismiss}
-				/>
-				{searchQuery.length > 0 && (
-					<TouchableOpacity 
-					style={styles.clearSearchButton}
-					onPress={() => setSearchQuery("")}
-					>
-					<MaterialCommunityIcons name="close-circle" size={18} color="#777" />
-					</TouchableOpacity>
-				)}
-			</View>
+          <View style={styles.searchBarContainer}>
+            <MaterialCommunityIcons name="magnify" size={20} color="#333" style={{ marginRight: 8 }} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar alimento..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              clearButtonMode="while-editing"
+              returnKeyType="search"
+              onSubmitEditing={Keyboard.dismiss}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity 
+                style={styles.clearSearchButton}
+                onPress={() => setSearchQuery("")}
+              >
+                <MaterialCommunityIcons name="close-circle" size={18} color="#777" />
+              </TouchableOpacity>
+            )}
+          </View>
 
           <TouchableOpacity 
             style={styles.logoutButton}
@@ -172,40 +237,71 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
         
-        {alimentos.length !== 0 ? (
+        {displayData.length > 0 || searching || showingFavorites ? (
           <FlatList
             ListHeaderComponent={
-              <View style={styles.header}>
-                <View style={styles.headerTitleContainer}>
-                  <Text style={styles.headerTitle}>Lista de Alimentos</Text>
-                  <Text style={styles.headerSubtitle}>
-                    {searching ? `Búsqueda: "${searchQuery}"` : "Alimentos destacados"}
-                  </Text>
+              <View>
+                <View style={styles.header}>
+                  <View style={styles.headerTitleContainer}>
+                    <Text style={styles.headerTitle}>Lista de Alimentos</Text>
+                    <Text style={styles.headerSubtitle}>
+                      {showingFavorites 
+                        ? "Tus favoritos" 
+                        : searching 
+                          ? `Búsqueda: "${searchQuery}"`
+                          : "Alimentos destacados"}
+                    </Text>
+                  </View>
+                  <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
+                    <Text style={styles.refreshButtonText}>↻ Refrescar</Text>
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
-                  <Text style={styles.refreshButtonText}>↻ Refrescar</Text>
-                </TouchableOpacity>
+                
+                {!searching && (
+                  <TouchableOpacity 
+                    style={styles.favoritesToggleContainer}
+                    onPress={toggleFavorites}
+                  >
+                    <Text style={styles.favoritesToggleText}>
+                      {showingFavorites ? "← Volver a alimentos destacados" : "Ver favoritos →"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             }
             contentContainerStyle={styles.listContent}
             keyExtractor={(item) => item.id}
-            data={alimentos}
+            data={displayData}
             renderItem={renderItem}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>
-                  {searching 
-                    ? `No se encontraron alimentos que coincidan con "${searchQuery}"` 
-                    : "No hay alimentos disponibles"}
+                  {showingFavorites 
+                    ? "No tienes alimentos favoritos guardados"
+                    : searching 
+                      ? `No se encontraron alimentos que coincidan con "${searchQuery}"`
+                      : "No hay alimentos disponibles"}
                 </Text>
+                {showingFavorites && (
+                  <View style={styles.emptyFavoritesContainer}>
+                    <Text style={styles.emptyFavoritesText}>
+                      Puedes añadir alimentos a favoritos desde la pantalla de detalles de cada alimento.
+                    </Text>
+                    <MaterialCommunityIcons name="star-outline" size={50} color="#ddd" style={styles.emptyFavoritesIcon} />
+                  </View>
+                )}
               </View>
             }
             ListFooterComponent={
               <View style={styles.footer}>
                 <Text style={styles.footerText}>
-                  {alimentos.length} {searching ? 'resultados encontrados' : 'alimentos mostrados'}
+                  {displayData.length} {showingFavorites 
+                    ? 'favoritos guardados' 
+                    : searching 
+                      ? 'resultados encontrados' 
+                      : 'alimentos mostrados'}
                 </Text>
               </View>
             }
@@ -215,19 +311,29 @@ export default function HomeScreen() {
         ) : (
           <View style={styles.errorContainer}>
             <Text style={styles.errorTitle}>
-              {searching 
-                ? `No se encontraron resultados para "${searchQuery}"` 
-                : "Error al cargar datos"}
+              {showingFavorites 
+                ? "No tienes favoritos guardados" 
+                : searching 
+                  ? `No se encontraron resultados para "${searchQuery}"` 
+                  : "Error al cargar datos"}
             </Text>
             <Text style={styles.errorMessage}>
-              {searching ? "Intenta con otros términos de búsqueda" : dataError}
+              {showingFavorites 
+                ? "Puedes añadir alimentos a tus favoritos desde la pantalla de detalles."
+                : searching 
+                  ? "Intenta con otros términos de búsqueda" 
+                  : dataError}
             </Text>
             <TouchableOpacity 
               style={styles.retryButton}
               onPress={handleRefresh}
             >
               <Text style={styles.retryButtonText}>
-                {searching ? "Reiniciar búsqueda" : "Reintentar"}
+                {showingFavorites 
+                  ? "Volver a alimentos destacados" 
+                  : searching 
+                    ? "Reiniciar búsqueda" 
+                    : "Reintentar"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -277,7 +383,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     flexDirection: 'row',
     alignItems: 'center',
-	justifyContent: "space-between",
+    justifyContent: "space-between",
     paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: '#ddd',
@@ -298,7 +404,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
     paddingBottom: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
@@ -324,6 +430,16 @@ const styles = StyleSheet.create({
   },
   refreshButtonText: {
     color: '#555',
+    fontWeight: '500',
+  },
+  favoritesToggleContainer: {
+    paddingVertical: 8,
+    marginBottom: 16,
+  },
+  favoritesToggleText: {
+    fontSize: 14,
+    color: '#3498db',
+    textDecorationLine: 'underline',
     fontWeight: '500',
   },
   listContent: {
@@ -395,6 +511,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+  },
+  emptyFavoritesContainer: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  emptyFavoritesText: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  emptyFavoritesIcon: {
+    marginTop: 10,
   },
   footer: {
     marginTop: 20,
