@@ -14,6 +14,7 @@ import {
 import { useAuth } from '../../lib/auth';
 import SmaeInterface from '../interfaces/smaeInterface';
 import { supabase } from '@/lib/supabase';
+import { router } from 'expo-router';
 
 export default function HomeScreen() {
   const { user, signOut } = useAuth();
@@ -45,6 +46,10 @@ export default function HomeScreen() {
   const handleRefresh = () => {
     loadAlimentos();
   };
+
+  const navigateToDetails = (id: string) => {
+    router.push(`/(app)/aliment-details/${id}`);
+  };
   
   const renderItem = ({ item, index }: { item: SmaeInterface, index: number }) => (
     <TouchableOpacity 
@@ -62,7 +67,10 @@ export default function HomeScreen() {
           {item.cantidad && (
             <Text style={styles.itemQuantity}>Cantidad: {item.cantidad}</Text>
           )}
-          <TouchableOpacity style={styles.infoButton}>
+          <TouchableOpacity 
+		  	style={styles.infoButton} 
+			onPress={() => navigateToDetails(item.id)}
+			>
             <Text style={styles.infoButtonText}>Detalles</Text>
           </TouchableOpacity>
         </View>
