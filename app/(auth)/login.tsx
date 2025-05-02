@@ -1,116 +1,71 @@
-import React, { useState } from 'react';
-import { View, TextInput, Button, StyleSheet, Text, Alert, ActivityIndicator } from 'react-native';
-import { supabase } from '../../lib/supabase';
-import { useRouter } from 'expo-router';
+// app/(auth)/Login.tsx
+import React from 'react';
+import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { Link, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import AuthForm from '@/components/AuthForm';
 
-export default function LoginScreen() {
-  const [email, setEmail] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
+export default function Login() {
   const router = useRouter();
 
-  async function signInWithEmail(): Promise<void> {
-    setLoading(true);
-    
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-      
-    } catch (error: any) {
-      Alert.alert('Error de inicio de sesión', error.message || 'Ha ocurrido un error');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function signUpWithEmail(): Promise<void> {
-    setLoading(true);
-    
-    try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-      
-      Alert.alert('Registro exitoso', 'Por favor confirma tu correo electrónico desde el email que te envíamos');
-    } catch (error: any) {
-      Alert.alert('Error de registro', error.message || 'Ha ocurrido un error');
-    } finally {
-      setLoading(false);
-    }
-  }
+  const handleForgotPassword = () => {
+    router.push('/(auth)/forgotPassword');
+  };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Iniciar Sesión</Text>
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Correo electrónico"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Contraseña"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        autoCapitalize="none"
-      />
-      
-      <Button
-        title={loading ? "Cargando..." : "Iniciar Sesión"}
-        onPress={signInWithEmail}
-        disabled={loading}
-      />
-      
-      <View style={styles.separator} />
-      
-      <Button
-        title={loading ? "Cargando..." : "Registrarse"}
-        onPress={signUpWithEmail}
-        disabled={loading}
-      />
-      
-      {loading && <ActivityIndicator style={styles.loader} />}
-    </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+        <AuthForm mode="signIn" />
+
+        <TouchableOpacity 
+          style={styles.forgotPasswordButton} 
+          onPress={handleForgotPassword}
+        >
+          <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
+        </TouchableOpacity>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>¿No tienes una cuenta? </Text>
+          <Link href="/(auth)/Register" asChild>
+            <TouchableOpacity>
+              <Text style={styles.link}>Regístrate</Text>
+            </TouchableOpacity>
+          </Link>
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    backgroundColor: '#f5f5f5',
+  },
+  content: {
+    flex: 1,
     justifyContent: 'center',
+    paddingHorizontal: 20,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  forgotPasswordButton: {
+    alignSelf: 'center',
+    marginTop: 10,
     marginBottom: 20,
-    textAlign: 'center',
   },
-  input: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    marginBottom: 15,
-    paddingHorizontal: 10,
+  forgotPasswordText: {
+    color: '#3498db',
+    fontSize: 14,
   },
-  separator: {
-    height: 20,
-  },
-  loader: {
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     marginTop: 20,
+  },
+  footerText: {
+    color: '#666',
+  },
+  link: {
+    color: '#3498db',
+    fontWeight: 'bold',
   },
 });
