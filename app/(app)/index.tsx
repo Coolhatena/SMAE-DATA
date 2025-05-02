@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../lib/auth';
 import SmaeInterface from '../interfaces/smaeInterface';
 import { supabase } from '@/lib/supabase';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -115,7 +116,8 @@ export default function HomeScreen() {
         </View>
         <View style={styles.itemDetails}>
           {item.cantidad && (
-            <Text style={styles.itemQuantity}>{item.cantidad} {item.unidad}</Text>
+			// If value is less than 1, show only 2 decimals to prevent ugly periodic number to be displayed (Like 0.33333...)
+            <Text style={styles.itemQuantity}>{parseFloat(item.cantidad) >= 1 ? parseFloat(item.cantidad) : parseFloat(item.cantidad).toFixed(2)} {item.unidad}</Text>
           )}
           <TouchableOpacity 
             style={styles.infoButton}
@@ -141,32 +143,33 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.topNav}>
+		  	<View style={styles.searchBarContainer}>
+				<MaterialCommunityIcons name="magnify" size={20} color="#333" style={{ marginRight: 8 }} />
+				<TextInput
+					style={styles.searchInput}
+					placeholder="Buscar alimento..."
+					value={searchQuery}
+					onChangeText={setSearchQuery}
+					clearButtonMode="while-editing"
+					returnKeyType="search"
+					onSubmitEditing={Keyboard.dismiss}
+				/>
+				{searchQuery.length > 0 && (
+					<TouchableOpacity 
+					style={styles.clearSearchButton}
+					onPress={() => setSearchQuery("")}
+					>
+					<MaterialCommunityIcons name="close-circle" size={18} color="#777" />
+					</TouchableOpacity>
+				)}
+			</View>
+
           <TouchableOpacity 
             style={styles.logoutButton}
             onPress={handleSignOut}
           >
-            <Text style={styles.logoutIcon}>⎋</Text>
+            <MaterialCommunityIcons name="logout" size={22} color="#333" />
           </TouchableOpacity>
-          
-          <View style={styles.searchBarContainer}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Buscar alimento..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              clearButtonMode="while-editing"
-              returnKeyType="search"
-              onSubmitEditing={Keyboard.dismiss}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity 
-                style={styles.clearSearchButton}
-                onPress={() => setSearchQuery("")}
-              >
-                <Text style={styles.clearSearchText}>×</Text>
-              </TouchableOpacity>
-            )}
-          </View>
         </View>
         
         {alimentos.length !== 0 ? (
@@ -265,14 +268,7 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#e74c3c',
     borderRadius: 20,
-    marginRight: 12,
-  },
-  logoutIcon: {
-    fontSize: 18,
-    color: 'white',
-    fontWeight: 'bold',
   },
   searchBarContainer: {
     flex: 1,
@@ -281,6 +277,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     flexDirection: 'row',
     alignItems: 'center',
+	justifyContent: "space-between",
     paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: '#ddd',
