@@ -8,21 +8,30 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import SmaeInterface from '@/app/interfaces/smaeInterface';
+import { useAuth } from '@/lib/auth';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-export default function AlimentDetails() {
+export default function DetallesAlimento() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { user } = useAuth();
   const [alimento, setAlimento] = useState<SmaeInterface | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoritesLoading, setFavoritesLoading] = useState(false);
 
   useEffect(() => {
     fetchAlimentoDetails();
-  }, [id]);
+    if (user) {
+      checkIfFavorite();
+    }
+  }, [id, user]);
 
   const fetchAlimentoDetails = async () => {
     if (!id) return;
@@ -47,6 +56,59 @@ export default function AlimentDetails() {
       setError('Ocurrió un error al cargar los detalles.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkIfFavorite = async () => {
+    if (!user || !id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('favorites')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('aliment_id', id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 its "No results found"
+        console.error('Error al verificar favorito:', error);
+      } else {
+        setIsFavorite(!!data);
+      }
+    } catch (err) {
+      console.error('Error al verificar favorito:', err);
+    }
+  };
+
+  const toggleFavorite = async () => {
+    if (!user || !id || !alimento) return;
+    
+    setFavoritesLoading(true);
+    
+    try {
+      if (isFavorite) {
+        const { error } = await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('aliment_id', id);
+
+        if (error) throw error;
+        setIsFavorite(false);
+        Alert.alert('Éxito', `"${alimento.alimento}" eliminado de tus favoritos`);
+      } else {
+        const { error } = await supabase
+          .from('favorites')
+          .insert([{ user_id: user.id, aliment_id: id }]);
+
+        if (error) throw error;
+        setIsFavorite(true);
+        Alert.alert('Éxito', `"${alimento.alimento}" añadido a tus favoritos`);
+      }
+    } catch (error: any) {
+      Alert.alert('Error', `No se pudo ${isFavorite ? 'eliminar de' : 'añadir a'} favoritos: ${error.message}`);
+    } finally {
+      setFavoritesLoading(false);
     }
   };
 
@@ -98,9 +160,25 @@ export default function AlimentDetails() {
           >
             <Text style={styles.backButtonText}>← Volver</Text>
           </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.favoriteButton, favoritesLoading && styles.disabledButton]}
+            onPress={toggleFavorite}
+            disabled={favoritesLoading}
+          >
+            {favoritesLoading ? (
+              <ActivityIndicator size="small" color="#e74c3c" />
+            ) : (
+              <MaterialCommunityIcons 
+                name={isFavorite ? "star" : "star-outline"} 
+                size={24} 
+                color={isFavorite ? "#e74c3c" : "#777"} 
+              />
+            )}
+          </TouchableOpacity>
         </View>
 
-        {/* Main Info */}
+        {/* Main info */}
         <View style={styles.mainInfoContainer}>
           <Text style={styles.alimentoName}>{alimento.alimento}</Text>
           <View style={styles.categoryBadge}>
@@ -110,7 +188,11 @@ export default function AlimentDetails() {
           <View style={styles.servingInfo}>
             <View style={styles.servingDetail}>
               <Text style={styles.servingLabel}>Cantidad</Text>
-              <Text style={styles.servingValue}>{alimento.cantidad}</Text>
+              <Text style={styles.servingValue}>
+                {parseFloat(alimento.cantidad) >= 1 
+                  ? parseFloat(alimento.cantidad) 
+                  : parseFloat(alimento.cantidad).toFixed(2)}
+              </Text>
             </View>
             <View style={styles.servingDetail}>
               <Text style={styles.servingLabel}>Unidad</Text>
@@ -143,7 +225,7 @@ export default function AlimentDetails() {
           </View>
         </View>
 
-        {/* Detailed nutritional facts */}
+        {/* Nutritional Info */}
         <View style={styles.nutritionContainer}>
           <Text style={styles.sectionTitle}>Información Nutricional</Text>
           
@@ -224,6 +306,17 @@ const styles = StyleSheet.create({
   backButtonText: {
     color: '#3498db',
     fontWeight: '600',
+  },
+  favoriteButton: {
+	width: 44,
+	height: 44,
+	justifyContent: 'center',
+	alignItems: 'center',
+	backgroundColor: '#f0f0f0',
+	borderRadius: 22,
+  },
+  disabledButton: {
+	opacity: 0.7
   },
   loadingContainer: {
     flex: 1,
