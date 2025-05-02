@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, StyleSheet, Text, Alert } from 'react-native';
+import { View, TextInput, StyleSheet, Text, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '../lib/auth';
 import Button from './Button';
 import { router } from 'expo-router';
@@ -13,6 +13,11 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn, signUp } = useAuth();
+
+  const handleTestCredentials = () => {
+	setEmail('al21760177@ite.edu.mx');
+	setPassword('contraseña')
+  }
 
   const handleSubmit = async () => {
     if (!email || !password) {
@@ -73,7 +78,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
         loading={loading}
         type="primary"
       />
-    </View>
+
+	  <TouchableOpacity 
+		style={styles.forgotPasswordButton} 
+		onPress={handleTestCredentials}
+	>
+		<Text style={styles.forgotPasswordText}>Credenciales de prueba</Text>
+	</TouchableOpacity>
+</View>
   );
 }
 
@@ -96,5 +108,14 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     paddingHorizontal: 15,
     backgroundColor: '#fff',
+  },
+  forgotPasswordButton: {
+    alignSelf: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  forgotPasswordText: {
+    color: '#3498db',
+    fontSize: 14,
   },
 });
