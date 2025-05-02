@@ -2,29 +2,48 @@ import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
-  Button, 
   StyleSheet, 
   FlatList, 
   TouchableOpacity, 
   ActivityIndicator,
   SafeAreaView,
   StatusBar,
-  Image 
+  TextInput,
+  Keyboard
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../../lib/auth';
 import SmaeInterface from '../interfaces/smaeInterface';
 import { supabase } from '@/lib/supabase';
-import { router } from 'expo-router';
 
 export default function HomeScreen() {
+  const router = useRouter();
   const { user, signOut } = useAuth();
   const [alimentos, setAlimentos] = useState<SmaeInterface[]>([]);
   const [dataError, setDataError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   
   useEffect(() => {
     loadAlimentos();
   }, []);
+
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      if (searching) {
+        loadAlimentos();
+        setSearching(false);
+      }
+      return;
+    }
+    
+    const debounceTimeout = setTimeout(() => {
+      searchAlimentos(searchQuery);
+    }, 500);
+    
+    return () => clearTimeout(debounceTimeout);
+  }, [searchQuery]);
   
   const loadAlimentos = async () => {
     setLoading(true);
@@ -43,18 +62,49 @@ export default function HomeScreen() {
     }
   };
 
-  const handleRefresh = () => {
-    loadAlimentos();
+  const searchAlimentos = async (query: string) => {
+    setLoading(true);
+    setSearching(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from("smae")
+        .select("*")
+        .ilike("alimento", `%${query}%`);
+      
+      if (error) {
+        setDataError(error.message);
+        console.log("Supabase search error:", error.details);
+      } else {
+        setAlimentos(data ?? []);
+      }
+    } catch (error) {
+      console.log("Search error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const handleRefresh = () => {
+    if (searchQuery.trim() !== "") {
+      searchAlimentos(searchQuery);
+    } else {
+      loadAlimentos();
+    }
+  };
+  
   const navigateToDetails = (id: string) => {
     router.push(`/(app)/aliment-details/${id}`);
+  };
+
+  const handleSignOut = () => {
+    signOut();
   };
   
   const renderItem = ({ item, index }: { item: SmaeInterface, index: number }) => (
     <TouchableOpacity 
       style={[styles.itemContainer, index % 2 === 0 ? styles.evenItem : styles.oddItem]}
-      onPress={() => console.log("Seleccionaste:", item.alimento)}
+      onPress={() => navigateToDetails(item.id)}
     >
       <View style={styles.itemContent}>
         <View style={styles.itemInfo}>
@@ -65,12 +115,12 @@ export default function HomeScreen() {
         </View>
         <View style={styles.itemDetails}>
           {item.cantidad && (
-            <Text style={styles.itemQuantity}>Cantidad: {item.cantidad}</Text>
+            <Text style={styles.itemQuantity}>{item.cantidad} {item.unidad}</Text>
           )}
           <TouchableOpacity 
-		  	style={styles.infoButton} 
-			onPress={() => navigateToDetails(item.id)}
-			>
+            style={styles.infoButton}
+            onPress={() => navigateToDetails(item.id)}
+          >
             <Text style={styles.infoButtonText}>Detalles</Text>
           </TouchableOpacity>
         </View>
@@ -78,7 +128,7 @@ export default function HomeScreen() {
     </TouchableOpacity>
   );
 
-  if (loading) {
+  if (loading && !alimentos.length) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3498db" />
@@ -90,13 +140,44 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
+        <View style={styles.topNav}>
+          <TouchableOpacity 
+            style={styles.logoutButton}
+            onPress={handleSignOut}
+          >
+            <Text style={styles.logoutIcon}>⎋</Text>
+          </TouchableOpacity>
+          
+          <View style={styles.searchBarContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar alimento..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              clearButtonMode="while-editing"
+              returnKeyType="search"
+              onSubmitEditing={Keyboard.dismiss}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity 
+                style={styles.clearSearchButton}
+                onPress={() => setSearchQuery("")}
+              >
+                <Text style={styles.clearSearchText}>×</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+        
         {alimentos.length !== 0 ? (
           <FlatList
             ListHeaderComponent={
               <View style={styles.header}>
                 <View style={styles.headerTitleContainer}>
                   <Text style={styles.headerTitle}>Lista de Alimentos</Text>
-                  <Text style={styles.headerSubtitle}>Búsqueda básica</Text>
+                  <Text style={styles.headerSubtitle}>
+                    {searching ? `Búsqueda: "${searchQuery}"` : "Alimentos destacados"}
+                  </Text>
                 </View>
                 <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
                   <Text style={styles.refreshButtonText}>↻ Refrescar</Text>
@@ -111,32 +192,40 @@ export default function HomeScreen() {
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No hay alimentos disponibles</Text>
+                <Text style={styles.emptyText}>
+                  {searching 
+                    ? `No se encontraron alimentos que coincidan con "${searchQuery}"` 
+                    : "No hay alimentos disponibles"}
+                </Text>
               </View>
             }
             ListFooterComponent={
               <View style={styles.footer}>
                 <Text style={styles.footerText}>
-                  {alimentos.length} alimentos encontrados
+                  {alimentos.length} {searching ? 'resultados encontrados' : 'alimentos mostrados'}
                 </Text>
-                <TouchableOpacity 
-                  style={styles.signOutButton}
-                  onPress={signOut}
-                >
-                  <Text style={styles.signOutButtonText}>Cerrar Sesión</Text>
-                </TouchableOpacity>
               </View>
             }
+            refreshing={loading}
+            onRefresh={handleRefresh}
           />
         ) : (
           <View style={styles.errorContainer}>
-            <Text style={styles.errorTitle}>Error al cargar datos</Text>
-            <Text style={styles.errorMessage}>{dataError}</Text>
+            <Text style={styles.errorTitle}>
+              {searching 
+                ? `No se encontraron resultados para "${searchQuery}"` 
+                : "Error al cargar datos"}
+            </Text>
+            <Text style={styles.errorMessage}>
+              {searching ? "Intenta con otros términos de búsqueda" : dataError}
+            </Text>
             <TouchableOpacity 
               style={styles.retryButton}
               onPress={handleRefresh}
             >
-              <Text style={styles.retryButtonText}>Reintentar</Text>
+              <Text style={styles.retryButtonText}>
+                {searching ? "Reiniciar búsqueda" : "Reintentar"}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -164,6 +253,48 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 16,
+    color: '#777',
+  },
+  topNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  logoutButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#e74c3c',
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  logoutIcon: {
+    fontSize: 18,
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  searchBarContainer: {
+    flex: 1,
+    height: 40,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 16,
+  },
+  clearSearchButton: {
+    padding: 4,
+  },
+  clearSearchText: {
+    fontSize: 20,
     color: '#777',
   },
   header: {
@@ -266,6 +397,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: '#666',
+    textAlign: 'center',
   },
   footer: {
     marginTop: 20,
@@ -277,17 +409,6 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 14,
     color: '#777',
-    marginBottom: 15,
-  },
-  signOutButton: {
-    backgroundColor: '#e74c3c',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  signOutButtonText: {
-    color: '#fff',
-    fontWeight: '600',
   },
   errorContainer: {
     flex: 1,
@@ -300,6 +421,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#e74c3c',
     marginBottom: 8,
+    textAlign: 'center',
   },
   errorMessage: {
     fontSize: 14,
@@ -318,11 +440,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-//   return (
-//     <View style={styles.container}>
-//       <Text style={styles.title}>¡Bienvenido!</Text>
-//       <Text style={styles.subtitle}>Correo: {user?.email}</Text>
-//       <Button title="Cerrar Sesión" onPress={signOut} />
-//     </View>
-//   );
-// }
