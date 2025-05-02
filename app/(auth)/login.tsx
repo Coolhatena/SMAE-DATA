@@ -1,9 +1,9 @@
-// app/(auth)/Login.tsx
 import React from 'react';
-import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, ImageBackground } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AuthForm from '@/components/AuthForm';
+import AuthForm from '../../components/AuthForm';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function Login() {
   const router = useRouter();
@@ -15,14 +15,22 @@ export default function Login() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <AuthForm mode="signIn" />
+        <View style={styles.brandContainer}>
+          <MaterialCommunityIcons name="food-apple" size={48} color="#3498db" />
+          <Text style={styles.brandName}>EasySMAE</Text>
+          <Text style={styles.brandTagline}>Nutrición simplificada</Text>
+        </View>
 
-        <TouchableOpacity 
-          style={styles.forgotPasswordButton} 
-          onPress={handleForgotPassword}
-        >
-          <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
-        </TouchableOpacity>
+        <View style={styles.formContainer}>
+          <AuthForm mode="signIn" />
+
+          <TouchableOpacity 
+            style={styles.forgotPasswordButton} 
+            onPress={handleForgotPassword}
+          >
+            <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>¿No tienes una cuenta? </Text>
@@ -40,17 +48,45 @@ export default function Login() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f9f9f9',
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
     paddingHorizontal: 20,
+  },
+  brandContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 60,
+    marginBottom: 40,
+  },
+  brandName: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 12,
+    letterSpacing: 0.5,
+  },
+  brandTagline: {
+    fontSize: 16,
+    color: '#777',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  formContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   forgotPasswordButton: {
     alignSelf: 'center',
-    marginTop: 10,
-    marginBottom: 20,
+    marginTop: 16,
+    marginBottom: 8,
   },
   forgotPasswordText: {
     color: '#3498db',
@@ -59,7 +95,7 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 20,
+    marginTop: 30,
   },
   footerText: {
     color: '#666',
