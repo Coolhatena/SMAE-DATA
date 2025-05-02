@@ -26,10 +26,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Verificar si hay una sesión activa
     checkUser();
     
-    // Suscribirse a cambios en el estado de autenticación
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
