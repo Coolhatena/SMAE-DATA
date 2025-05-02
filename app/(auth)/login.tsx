@@ -38,7 +38,7 @@ export default function LoginScreen() {
 
       if (error) throw error;
       
-      Alert.alert('Registro exitoso', 'Por favor verifica tu correo electrónico');
+      Alert.alert('Registro exitoso', 'Por favor confirma tu correo electrónico desde el email que te envíamos');
     } catch (error: any) {
       Alert.alert('Error de registro', error.message || 'Ha ocurrido un error');
     } finally {
