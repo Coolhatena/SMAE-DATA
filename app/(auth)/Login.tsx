@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button, StyleSheet, Text, Alert, ActivityIndicator } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import { AuthStackParamList } from '@/types';
 
 type LoginScreenProps = {

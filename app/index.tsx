@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button, FlatList, Text, View } from "react-native";
-import { supabase } from "./helper/supabase";
+import { supabase } from "../lib/supabase";
 import SmaeInterface from "./interfaces/smaeInterface";
 
 export default function Index() {
