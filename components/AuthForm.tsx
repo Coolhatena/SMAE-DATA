@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, TextInput, StyleSheet, Text, Alert } from 'react-native';
 import { useAuth } from '../lib/auth';
 import Button from './Button';
+import { router } from 'expo-router';
 
 type AuthFormProps = {
   mode: 'signIn' | 'signUp';
@@ -28,7 +29,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
       } else {
         const { error } = await signUp(email, password);
         if (error) throw error;
-        else Alert.alert('¡Registro exitoso!', 'Por favor verifica tu correo electrónico');
+        else Alert.alert('¡Registro exitoso!', 'Por favor revisa tu correo electrónico y entra al enlace de verificación.', [
+			{ 
+			  text: 'OK', 
+			  onPress: () => router.back() 
+			}
+		  ]);
       }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Ocurrió un error en la autenticación');
